@@ -33,4 +33,9 @@ public class ItemQuantity {
 		//TODO: param cannot be negative
 		this.setQuantity(this.getQuantity()-amount);
 	}
+	
+	@Override
+	public boolean equals(Object arg0) {
+		return this.getItemType().equals(((ItemQuantity)arg0).getItemType());
+	}
 }

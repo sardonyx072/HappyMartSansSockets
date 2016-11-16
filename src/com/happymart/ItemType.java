@@ -2,7 +2,7 @@ package com.happymart;
 
 import java.util.UUID;
 
-public class ItemType {
+public class ItemType implements Comparable {
 	
 	/**
 	 * Represents the item type's unique identification number. This does NOT identify individual items, only their type.
@@ -21,14 +21,24 @@ public class ItemType {
 	
 	/**
 	 * The constructor for ItemType objects. Randomly assigns ID independently of other classes.
+	 * @param id - the item type's unique identification number
+	 * @param name - the item type's name and descriptor
+	 * @param price - the item type's price in US cents
+	 */
+	public ItemType (UUID id, String name, int price) {
+		this.id = id;
+		this.setName(name);
+		this.setPrice(price);
+	}
+	
+	/**
+	 * The constructor for ItemType objects. Randomly assigns ID independently of other classes.
 	 * @param name - the item type's name and descriptor
 	 * @param price - the item type's price in US cents
 	 */
 	public ItemType (String name, int price) {
 		//TODO: check to make sure UUID not already taken //not necessary?
-		this.id = UUID.randomUUID();
-		this.setName(name);
-		this.setPrice(price);
+		this(UUID.randomUUID(),name,price);
 	}
 	
 	/**
@@ -71,5 +81,15 @@ public class ItemType {
 	public void setPrice(int price) {
 		//TODO: cannot be negative
 		this.price = price;
+	}
+
+	@Override
+	public int compareTo(Object arg0) {
+		return this.name.compareTo(((ItemType)arg0).name);
+	}
+	
+	@Override
+	public boolean equals(Object arg0) {
+		return this.id == ((ItemType)arg0).id;
 	}
 }
