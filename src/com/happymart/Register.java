@@ -14,11 +14,11 @@ import java.util.HashSet;
 import java.util.StringTokenizer;
 
 public class Register {
-	private static final String DRAWER_LOCATION = "res\\drawer.txt";
-	private static final String EMPLOYEES_LOCATION = "res\\employees.txt";
-	private static final String INVENTORY_LOCATION = "res\\inventory.txt";
-	private static final String TRANSACTION_LOCATION = "res\\transactions\\";
-	private static final String REPORTS_LOCATION = "res\\reports\\";
+	private static final String DRAWER_LOCATION = "..\\res\\drawer.txt";
+	private static final String EMPLOYEES_LOCATION = "..\\res\\employees.txt";
+	private static final String INVENTORY_LOCATION = "..\\res\\inventory.txt";
+	private static final String TRANSACTION_LOCATION = "..\\res\\transactions\\";
+	private static final String REPORTS_LOCATION = "..\\res\\reports\\";
 	private ArrayList<Integer> availableIDs;
 	private HashSet<Employee> employees;
 	private HashSet<Integer> referencedIDs;
@@ -28,14 +28,17 @@ public class Register {
 	private Employee employee;
 	
 	public Register () {
-		this.loadDrawerFromFile();
-		this.loadEmployeesFromFile();
-		this.referencedIDs = new HashSet<Integer>();
-		this.purchasing = new HashSet<ItemQuantity>();
-		this.returning = new HashSet<ItemQuantity>();
+		this.availableIDs = new ArrayList<Integer>();
 		for (int i = 0; i < 10000; i++) {
 			this.availableIDs.add(i);
 		}
+		this.referencedIDs = new HashSet<Integer>();
+		this.purchasing = new HashSet<ItemQuantity>();
+		this.returning = new HashSet<ItemQuantity>();
+		this.moneyInDrawer = 0;
+		this.employee = null;
+		this.loadDrawerFromFile();
+		this.loadEmployeesFromFile();
 		HashSet<ItemQuantityManaged> temp = this.getInventory();
 		for (ItemQuantityManaged item : temp) {
 			this.availableIDs.remove(item.getItemType().getID());
@@ -43,13 +46,15 @@ public class Register {
 		for (Employee e : this.employees) {
 			this.availableIDs.remove(e.getID());
 		}
-		this.employee = null;
 	}
 	public int getRandomID() {
-		return this.availableIDs.remove((int)Math.random()*this.availableIDs.size());
+		return this.availableIDs.remove((int)(Math.random()*this.availableIDs.size()));
 	}
 	public int getMoneyInDrawer() {
 		return this.moneyInDrawer;
+	}
+	public String getMoneyInDrawerAsString() {
+		return NumberFormat.getCurrencyInstance().format(this.moneyInDrawer/100.0);
 	}
 	public void addMoneyToDrawer(int amount) {
 		this.moneyInDrawer += amount;
@@ -57,6 +62,10 @@ public class Register {
 	public void removeMoneyFromDrawer(int amount) {
 		//TODO: cannot be negative
 		this.moneyInDrawer -= amount;
+	}
+	public void setMoneyInDrawer (int amount) {
+		//TODO: cannot be negative
+		this.moneyInDrawer = amount;
 	}
 	private void loadDrawerFromFile() {
 		try {
@@ -81,7 +90,7 @@ public class Register {
 			BufferedReader reader = new BufferedReader(new FileReader(EMPLOYEES_LOCATION));
 			while (reader.ready()) {
 				String line = reader.readLine();
-				StringTokenizer tokenizer = new StringTokenizer(line);
+				StringTokenizer tokenizer = new StringTokenizer(line,",");
 				int id = Integer.parseInt(tokenizer.nextToken());
 				String name = tokenizer.nextToken();
 				String user = tokenizer.nextToken();
@@ -109,6 +118,23 @@ public class Register {
 	public void setEmployee(Employee employee) {
 		this.employee = employee;
 	}
+	public boolean areValidEmployeeCredentials(String username, String password) {
+		for (Employee e : this.employees) {
+			if (e.getUsername().equals(username) && e.getPassword().equals(password)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	public boolean signInWithCredentials(String username, String password) {
+		for (Employee e : this.employees) {
+			if (e.getUsername().equals(username) && e.getPassword().equals(password)) {
+				this.setEmployee(e);
+				return true;
+			}
+		}
+		return false;
+	}
 	public HashSet<Integer> getReferencedIDs() {
 		return this.referencedIDs;
 	}
@@ -124,6 +150,14 @@ public class Register {
 	public HashSet<ItemQuantity> getPurchasing() {
 		return this.purchasing;
 	}
+	public String getPurchasingAsString() {
+		StringBuilder builder = new StringBuilder();
+		int i = 0;
+		for (ItemQuantity item : this.purchasing) {
+			builder.append("\n" + (i++) + item.toString());
+		}
+		return builder.toString();
+	}
 	public void addToPurchasing(ItemQuantity item) {
 		for (ItemQuantity i : this.purchasing) {
 			if (i.equals(item)) {
@@ -132,6 +166,15 @@ public class Register {
 			}
 		}
 		this.purchasing.add(item);
+	}
+	public boolean canAddToPurchasingAndDo(int id, int quantity) {
+		for (ItemQuantity i : this.getInventory()) {
+			if (i.getItemType().getID() == id && i.getQuantity() >= quantity) {
+				this.addToPurchasing(new ItemQuantity(i.getItemType(),quantity));
+				return true;
+			}
+		}
+		return false;
 	}
 	public void removeFromPurchasing(ItemQuantity item) {
 		for (ItemQuantity i : this.purchasing) {
@@ -412,5 +455,9 @@ public class Register {
 			writer.close();
 		} catch (IOException e) {
 		}
+	}
+	public void saveState() {
+		this.writeDrawerToFile();
+		this.writeEmployeesToFile();
 	}
 }
