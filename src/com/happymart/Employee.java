@@ -12,7 +12,7 @@ public class Employee {
 	/**
 	 * Represents the employee's ID number, used for looking up the employee quickly.
 	 */
-	private UUID id;
+	private int id;
 	
 	/**
 	 * Represents the employee's name.
@@ -35,9 +35,9 @@ public class Employee {
 	 * @param user - the employee's username
 	 * @param pass - the employee's password
 	 */
-	public Employee (String name, String user, String pass) {
+	public Employee (int id, String name, String user, String pass) {
 		//TODO: check to see if UUID already taken //not necessary?
-		this.id = UUID.randomUUID();
+		this.id = id;
 		this.setName(name);
 		this.setUsername(user);
 		this.setPassword(pass);
@@ -47,7 +47,7 @@ public class Employee {
 	 * Get method for employee ID number.
 	 * @return id - employee's ID number
 	 */
-	public UUID getID() {
+	public int getID() {
 		return this.id;
 	}
 	
