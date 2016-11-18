@@ -101,4 +101,8 @@ public class Employee {
 		//TODO: cannot be blank or null
 		this.pass = pass;
 	}
+	
+	public boolean equals(Employee e) {
+		return this.getID() == e.getID();
+	}
 }

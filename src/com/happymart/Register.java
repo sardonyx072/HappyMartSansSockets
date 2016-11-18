@@ -2,22 +2,24 @@ package com.happymart;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
-import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
-import java.util.UUID;
 
 public class Register {
 	private static final String DRAWER_LOCATION = "res\\drawer.txt";
 	private static final String EMPLOYEES_LOCATION = "res\\employees.txt";
 	private static final String INVENTORY_LOCATION = "res\\inventory.txt";
 	private static final String TRANSACTION_LOCATION = "res\\transactions\\";
-	private static ArrayList<Integer> availableIDs;
+	private static final String REPORTS_LOCATION = "res\\reports\\";
+	private ArrayList<Integer> availableIDs;
 	private HashSet<Employee> employees;
 	private HashSet<Integer> referencedIDs;
 	private HashSet<ItemQuantity> purchasing;
@@ -37,6 +39,9 @@ public class Register {
 		HashSet<ItemQuantityManaged> temp = this.getInventory();
 		for (ItemQuantityManaged item : temp) {
 			this.availableIDs.remove(item.getItemType().getID());
+		}
+		for (Employee e : this.employees) {
+			this.availableIDs.remove(e.getID());
 		}
 		this.employee = null;
 	}
@@ -217,7 +222,7 @@ public class Register {
 			while(reader.ready()) {
 				String line = reader.readLine();
 				StringTokenizer tokenizer = new StringTokenizer(line);
-				UUID id = UUID.fromString(tokenizer.nextToken());
+				int id = Integer.parseInt(tokenizer.nextToken());
 				String name = tokenizer.nextToken();
 				int price = Integer.parseInt(tokenizer.nextToken());
 				int amount = Integer.parseInt(tokenizer.nextToken());
@@ -241,15 +246,169 @@ public class Register {
 		} catch (IOException e) {
 		}
 	}
+	private void writeGeneratedReport(String report, String filename) {
+		try {
+			BufferedWriter writer = new BufferedWriter(new FileWriter(REPORTS_LOCATION + filename));
+			writer.write(report);
+			writer.close();
+		} catch (IOException e) {
+		}
+	}
+	public void generateReport() {
+		StringBuilder builder = new StringBuilder();
+		ArrayList<Transaction> transactions = this.loadTransactionsFromFiles();
+		int numberOfSales = 0;
+		int totalSalesAmount = 0;
+		int totalReturnsAmount = 0;
+		int net = 0;
+		builder.append("Store Report:");
+		for (Transaction t : transactions) {
+			numberOfSales++;
+			totalSalesAmount += t.getPurchasedSubtotal();
+			totalReturnsAmount += t.getReturnedSubtotal();
+			builder.append("\n\n**********************************\n" + t);
+		}
+		net = totalSalesAmount - totalReturnsAmount;
+		NumberFormat formatter = NumberFormat.getCurrencyInstance();
+		String totalMadeFormatted = formatter.format(totalSalesAmount/100.0);
+		String meanMadeFormatted = formatter.format(1.0*totalSalesAmount/numberOfSales/100.0);
+		String totalLostFormatted = formatter.format(totalReturnsAmount/100.0);
+		String meanLostFormatted = formatter.format(1.0*totalReturnsAmount/numberOfSales/100.0);
+		String totalNetFormatted = formatter.format(net/100.0);
+		String meanNetFormatted = formatter.format(1.0*net/numberOfSales/100.0);
+		builder.append("\n\n**********************************");
+		builder.append("\nStatistics:");
+		builder.append("\nNumber of transactions: " + numberOfSales);
+		builder.append("\nTotal money made: " + totalMadeFormatted);
+		builder.append("\nMean money made per transaction: " + meanMadeFormatted);
+		builder.append("\nTotal money lost: " + totalLostFormatted);
+		builder.append("\nMean money lost per transaction: " + meanLostFormatted);
+		builder.append("\nNet money made: " + totalNetFormatted);
+		builder.append("\nNet money made per transaction: " + meanNetFormatted);
+		this.writeGeneratedReport(builder.toString(), "Store Report - " + new Date());
+	}
+	public void generateReport(Employee employee) {
+		StringBuilder builder = new StringBuilder();
+		ArrayList<Transaction> transactions = this.loadTransactionsFromFiles();
+		int numberOfSales = 0;
+		int totalSalesAmount = 0;
+		int totalReturnsAmount = 0;
+		int net = 0;
+		builder.append("Store Report:");
+		for (Transaction t : transactions) {
+			if (t.getEmployee().equals(employee)) {
+				numberOfSales++;
+				totalSalesAmount += t.getPurchasedSubtotal();
+				totalReturnsAmount += t.getReturnedSubtotal();
+				builder.append("\n\n**********************************\n" + t);
+			}
+		}
+		net = totalSalesAmount - totalReturnsAmount;
+		NumberFormat formatter = NumberFormat.getCurrencyInstance();
+		String totalMadeFormatted = formatter.format(totalSalesAmount/100.0);
+		String meanMadeFormatted = formatter.format(1.0*totalSalesAmount/numberOfSales/100.0);
+		String totalLostFormatted = formatter.format(totalReturnsAmount/100.0);
+		String meanLostFormatted = formatter.format(1.0*totalReturnsAmount/numberOfSales/100.0);
+		String totalNetFormatted = formatter.format(net/100.0);
+		String meanNetFormatted = formatter.format(1.0*net/numberOfSales/100.0);
+		builder.append("\n\n**********************************");
+		builder.append("\nStatistics:");
+		builder.append("\nNumber of transactions: " + numberOfSales);
+		builder.append("\nTotal money made: " + totalMadeFormatted);
+		builder.append("\nMean money made per transaction: " + meanMadeFormatted);
+		builder.append("\nTotal money lost: " + totalLostFormatted);
+		builder.append("\nMean money lost per transaction: " + meanLostFormatted);
+		builder.append("\nNet money made: " + totalNetFormatted);
+		builder.append("\nNet money made per transaction: " + meanNetFormatted);
+		this.writeGeneratedReport(builder.toString(), "Employee Report - " + employee + " - " + new Date());
+	}
 	private ArrayList<Transaction> loadTransactionsFromFiles() {
 		ArrayList<Transaction> transactions = new ArrayList<Transaction>();
-		
+		File path = new File(TRANSACTION_LOCATION);
+		File[] files = path.listFiles();
+		for (File f : files) {
+			if (f.isFile() && f.getName().endsWith(".txt")) {
+				try {
+					BufferedReader reader = new BufferedReader(new FileReader(f));
+					int tid = Integer.parseInt(reader.readLine());
+					Date ts = new Date(reader.readLine());
+					int eid = Integer.parseInt(reader.readLine());
+					Employee empl = new Employee(-1,"error","eror","error");
+					for (Employee j : this.employees) {
+						if (j.getID() == eid) {
+							empl = j;
+							break;
+						}
+					}
+					int refsSize = Integer.parseInt(reader.readLine());
+					HashSet<Integer> refs = new HashSet<Integer>();
+					for (int i = 0; i < refsSize; i++) {
+						refs.add(new Integer(reader.readLine()));
+					}
+					int purchSize = Integer.parseInt(reader.readLine());
+					HashSet<ItemQuantity> purch = new HashSet<ItemQuantity>();
+					for (int i = 0; i < purchSize; i++) {
+						StringTokenizer tokenizer = new StringTokenizer(reader.readLine());
+						int pid = Integer.parseInt(tokenizer.nextToken());
+						int pq = Integer.parseInt(tokenizer.nextToken());
+						ItemType type = new ItemType(pid,"error",-1);
+						for (ItemQuantity j : this.getInventory()) {
+							if (j.getItemType().getID() == pid) {
+								type = j.getItemType();
+								break;
+							}
+						}
+						purch.add(new ItemQuantity(type,pq));
+					}
+					int retSize = Integer.parseInt(reader.readLine());
+					HashSet<ItemQuantity> ret = new HashSet<ItemQuantity>();
+					for (int i = 0; i < retSize; i++) {
+						StringTokenizer tokenizer = new StringTokenizer(reader.readLine());
+						int pid = Integer.parseInt(tokenizer.nextToken());
+						int pq = Integer.parseInt(tokenizer.nextToken());
+						ItemType type = new ItemType(pid,"error",-1);
+						for (ItemQuantity j : this.getInventory()) {
+							if (j.getItemType().getID() == pid) {
+								type = j.getItemType();
+								break;
+							}
+						}
+						ret.add(new ItemQuantity(type,pq));
+					}
+					reader.close();
+					transactions.add(new Transaction(tid,ts,empl,refs,purch,ret));
+				} catch (FileNotFoundException e) {
+				} catch (NumberFormatException e) {
+				} catch (IOException e) {
+				}
+			}
+		}
+		//bubble sort
+		for (int i = 0; i < transactions.size(); i++) {
+			for (int j = 0; j < (transactions.size() - 1 - i); j++) {
+				if (transactions.get(j).getTimestamp().compareTo(transactions.get(j+1).getTimestamp()) > 0) {
+					transactions.add(j, transactions.remove(j+1));
+				}
+			}
+		}
 		return transactions;
 	}
 	private void writeTransactionToFile(Transaction t) {
 		try {
 			BufferedWriter writer = new BufferedWriter(new FileWriter(TRANSACTION_LOCATION + t.getTimestamp()));
-			writer.write(t.toString());
+			writer.write(t.getID()+"\n"+t.getTimestamp()+"\n"+t.getEmployee().getID());
+			writer.write("\n" + t.getReferencedIDs().size());
+			for (Integer i : t.getReferencedIDs()) {
+				writer.write("\n" + i);
+			}
+			writer.write("\n" + t.getPurchased().size());
+			for (ItemQuantity i : t.getPurchased()) {
+				writer.write("\n" + i.getItemType().getID() + "," + i.getQuantity());
+			}
+			writer.write("\n" + t.getReturned().size());
+			for (ItemQuantity i : t.getReturned()) {
+				writer.write("\n" + i.getItemType().getID() + "," + i.getQuantity());
+			}
 			writer.close();
 		} catch (IOException e) {
 		}
