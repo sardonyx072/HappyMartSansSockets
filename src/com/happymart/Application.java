@@ -1,13 +1,14 @@
 package com.happymart;
 
-import java.text.NumberFormat;
-
 public class Application implements Runnable {
 	
 	private Register reg;
+	private int lastItemScannedID;
+	private boolean lastItemIsReturn;
 	
 	public Application() {
 		this.reg = new Register();
+		this.lastItemScannedID = -1;
 	}
 
 	@Override
@@ -73,34 +74,67 @@ public class Application implements Runnable {
 	}
 	
 	private boolean home() {
-		String[] opts = {"open drawer","scan item","set number of item","remove item","check inventory","clear sale","log out"};
+		String[] opts = {"open drawer","return item","scan item","manually enter volume of last scanned item","remove item","check inventory","complete sale","clear sale","log out"};
 		String input = "";
 		boolean first = true;
+		boolean unavailable = false;
 		while (!InputType.isCancel(input) && !InputType.isExit(input) && !InputType.isQuit(input)) {
 			if (first) {
-				input = PromptAndInput.HOME_FIRST.getInput(reg.getEmployee().getName(),NumberFormat.getCurrencyInstance().format(reg.getTotalForTransaction()),reg.getPurchasingAsString(),PromptAndInput.formatArray(opts));
+				input = PromptAndInput.HOME_FIRST.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString(),PromptAndInput.formatArray(opts));
+				unavailable = false;
 			}
 			else {
-				input = PromptAndInput.HOME.getInput(reg.getEmployee().getName(),NumberFormat.getCurrencyInstance().format(reg.getTotalForTransaction()),reg.getPurchasingAsString(),PromptAndInput.formatArray(opts));
+				if (unavailable) {
+					input = PromptAndInput.HOME_UNAVAILABLE.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString(),PromptAndInput.formatArray(opts));
+				}
+				else {
+					input = PromptAndInput.HOME.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString(),PromptAndInput.formatArray(opts));
+					unavailable = false;
+				}
 			}
 			switch (Integer.parseInt(input)) {
 			case 0: //open drawer
 				while(this.drawer());
 				break;
-			case 1: //scan item
+			case 1: //return item
+				while(processReturn());
 				break;
-			case 2: //set number of item
+			case 2: //scan item
+				while(this.scan());
 				break;
-			case 3: //remove item
+			case 3: //set number of item
+				if (this.lastItemScannedID != -1)
+					while(this.volume());
+				else
+					unavailable = true;
 				break;
-			case 4: //check inventory
+			case 4: //remove item
+				if (this.reg.getPurchasing().size() > 0 || this.reg.getReturning().size() > 0) {
+					
+				}
+				else {
+					unavailable = true;
+				}
 				break;
-			case 5: //clear sale
+			case 5: //check inventory
+				break;
+			case 6: //complete sale
+				if (this.reg.getPurchasing().size() > 0 || this.reg.getReturning().size() > 0) {
+					
+				}
+				else {
+					unavailable = true;
+				}
+				break;
+			case 7: //clear sale
 				this.reg.clearSale();
+				this.lastItemScannedID = -1;
 				break;
-			case 6: //log out
+			case 8: //log out
+				this.lastItemScannedID = -1;
 				this.reg.clearSale();
 				this.reg.setEmployee(null);
+				this.reg.saveState();
 				return false;
 			default:
 				first = false;
@@ -164,17 +198,71 @@ public class Application implements Runnable {
 		return false; //temp
 	}
 	
+	private boolean processReturn() {
+		String input = "";
+		while (!InputType.isCancel(input) && !InputType.isExit(input) && !InputType.isQuit(input)) {
+			input = PromptAndInput.RETURN_TRANSACTION.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString());
+			if (!InputType.isCancel(input) && !InputType.isExit(input) && !InputType.isQuit(input)) {
+				int id = Integer.parseInt(input);
+				boolean first = true;
+				while (!InputType.isCancel(input) && !InputType.isExit(input) && !InputType.isQuit(input)) {
+					if (first) {
+						input = PromptAndInput.SCAN_ITEM_FIRST.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString());
+					}
+					else {
+						input = PromptAndInput.SCAN_ITEM.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString());
+					}
+					if (reg.canAddToReturnAndDo(id, Integer.parseInt(input))) {
+						this.lastItemScannedID = Integer.parseInt(input);
+						this.lastItemIsReturn = true;
+						return false;
+					}
+					else {
+						this.lastItemScannedID = -1;
+						first = false;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	
 	private boolean scan() {
 		String input = "";
 		boolean first = true;
 		while (!InputType.isCancel(input) && !InputType.isExit(input) && !InputType.isQuit(input)) {
 			if (first) {
-				input = PromptAndInput.SCAN_ITEM_FIRST.getInput(reg.getEmployee().getName(),NumberFormat.getCurrencyInstance().format(reg.getTotalForTransaction()),reg.getPurchasingAsString());
+				input = PromptAndInput.SCAN_ITEM_FIRST.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString());
 			}
 			else {
-				input = PromptAndInput.SCAN_ITEM.getInput(reg.getEmployee().getName(),NumberFormat.getCurrencyInstance().format(reg.getTotalForTransaction()),reg.getPurchasingAsString());
+				input = PromptAndInput.SCAN_ITEM.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString());
 			}
-			if (reg.canAddToPurchasingAndDo(Integer.parseInt(input), 1));
+			if (reg.canAddToPurchasingAndDo(Integer.parseInt(input), 1)) {
+				this.lastItemScannedID = Integer.parseInt(input);
+				this.lastItemIsReturn = false;
+				return false;
+			}
+			else {
+				this.lastItemScannedID = -1;
+				first = false;
+			}
+		}
+		return false;
+	}
+	
+	private boolean volume() {
+		String input = "";
+		while (!InputType.isCancel(input) && !InputType.isExit(input) && !InputType.isQuit(input)) {
+			input = PromptAndInput.VOLUME.getInput(reg.getEmployee().getName(),reg.getTotalForTransactionAsString(),reg.getCurrentSaleAsString(),reg.getItemType(this.lastItemScannedID).getName());
+			if (!InputType.isCancel(input) && !InputType.isExit(input) && !InputType.isQuit(input)) {
+				if (Integer.parseInt(input) == 0) {
+					this.reg.removeFromPurchasing(this.reg.getItemType(this.lastItemScannedID));
+				}
+				else {
+					this.reg.addToPurchasing(new ItemQuantity(this.reg.getItemType(this.lastItemScannedID),Integer.parseInt(input)));
+				}
+				break;
+			}
 		}
 		return false;
 	}

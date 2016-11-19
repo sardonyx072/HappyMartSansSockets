@@ -44,6 +44,19 @@ public enum PromptAndInput {
 			""																	+ "\n" +
 			"> ",InputType.OPTION_OR_CANCEL
 			),
+	HOME_UNAVAILABLE(
+			"Happy Mart Store Manager"											+ "\n" +
+			"Currently signed in as: {{0}}"										+ "\n" +
+			"****************************************************************"	+ "\n" +
+			"Current Sale: {{1}}"												+ "\n" +
+			"{{2}}"																+ "\n" +
+			"****************************************************************"	+ "\n" +
+			"Options: "															+ "\n" +
+			"{{3}}"																+ "\n" +
+			""																	+ "\n" +
+			"Option unavailable at this time."									+ "\n" +
+			"> ",InputType.OPTION_OR_CANCEL
+			),
 	HOME(
 			"Happy Mart Store Manager"											+ "\n" +
 			"Currently signed in as: {{0}}"										+ "\n" +
@@ -113,6 +126,15 @@ public enum PromptAndInput {
 			"****************************************************************"	+ "\n" +
 			"Set drawer value to how much?: ",InputType.MONEY_OR_CANCEL
 			),
+	RETURN_TRANSACTION(
+			"Happy Mart Store Manager"											+ "\n" +
+			"Currently signed in as: {{0}}"										+ "\n" +
+			"****************************************************************"	+ "\n" +
+			"Current Sale: {{1}}"												+ "\n" +
+			"{{2}}"																+ "\n" +
+			"****************************************************************"	+ "\n" +
+			"Enter Receipt Number: ",InputType.OPTION_OR_CANCEL
+			),
 	SCAN_ITEM_FIRST(
 			"Happy Mart Store Manager"											+ "\n" +
 			"Currently signed in as: {{0}}"										+ "\n" +
@@ -131,6 +153,15 @@ public enum PromptAndInput {
 			"****************************************************************"	+ "\n" +
 			"Invalid item ID."													+ "\n" +
 			"Enter Item ID: ",InputType.OPTION_OR_CANCEL
+			),
+	VOLUME(
+			"Happy Mart Store Manager"											+ "\n" +
+			"Currently signed in as: {{0}}"										+ "\n" +
+			"****************************************************************"	+ "\n" +
+			"Current Sale: {{1}}"												+ "\n" +
+			"{{2}}"																+ "\n" +
+			"****************************************************************"	+ "\n" +
+			"Enter number of {{3}} items: ",InputType.OPTION_OR_CANCEL
 			),
 	REMOVE_ITEM_FIRST(
 			"Happy Mart Store Manager"											+ "\n" +

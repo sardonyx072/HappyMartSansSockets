@@ -67,6 +67,14 @@ public class Register {
 		//TODO: cannot be negative
 		this.moneyInDrawer = amount;
 	}
+	public ItemType getItemType(int id) {
+		for (ItemQuantityManaged i : this.getInventory()) {
+			if (i.getItemType().getID() == id) {
+				return i.getItemType();
+			}
+		}
+		return null;
+	}
 	private void loadDrawerFromFile() {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(DRAWER_LOCATION));
@@ -90,7 +98,7 @@ public class Register {
 			BufferedReader reader = new BufferedReader(new FileReader(EMPLOYEES_LOCATION));
 			while (reader.ready()) {
 				String line = reader.readLine();
-				StringTokenizer tokenizer = new StringTokenizer(line,",");
+				StringTokenizer tokenizer = new StringTokenizer(line,"\t");
 				int id = Integer.parseInt(tokenizer.nextToken());
 				String name = tokenizer.nextToken();
 				String user = tokenizer.nextToken();
@@ -105,8 +113,14 @@ public class Register {
 	public void writeEmployeesToFile() {
 		try {
 			BufferedWriter writer = new BufferedWriter(new FileWriter(EMPLOYEES_LOCATION));
+			boolean first = true;
 			for (Employee employee : this.employees) {
-				writer.write(employee.getID() + "," + employee.getName() + "," + employee.getUsername() + "," + employee.getPassword());
+				if (first){
+					writer.write(employee.getID() + "\t" + employee.getName() + "\t" + employee.getUsername() + "\t" + employee.getPassword());
+					first = false;
+				}
+				else 
+					writer.write("\n" + employee.getID() + "\t" + employee.getName() + "\t" + employee.getUsername() + "\t" + employee.getPassword());
 			}
 			writer.close();
 		} catch (IOException e) {
@@ -150,11 +164,32 @@ public class Register {
 	public HashSet<ItemQuantity> getPurchasing() {
 		return this.purchasing;
 	}
+	public String getCurrentSaleAsString() {
+		StringBuilder builder = new StringBuilder();
+		int i = 0;
+		if (this.returning.size() > 0) {
+			builder.append("Purchasing:");
+			for (ItemQuantity item : this.purchasing) {
+				builder.append("\n" + (i++) + ". " + item.toString());
+			}
+			builder.append("\n");
+			builder.append("Returning:");
+			for (ItemQuantity item : this.returning) {
+				builder.append("\n" + (i++) + ". " + item.toString());
+			}
+		}
+		else {
+			for (ItemQuantity item : this.purchasing) {
+				builder.append("\n" + (i++) + ". " + item.toString());
+			}
+		}
+		return builder.toString();
+	}
 	public String getPurchasingAsString() {
 		StringBuilder builder = new StringBuilder();
 		int i = 0;
 		for (ItemQuantity item : this.purchasing) {
-			builder.append("\n" + (i++) + item.toString());
+			builder.append("\n" + (i++) + ". " + item.toString());
 		}
 		return builder.toString();
 	}
@@ -176,6 +211,36 @@ public class Register {
 		}
 		return false;
 	}
+	public boolean isValidTransactionNumber(int transactionID) {
+		ArrayList<Transaction> transactions = this.loadTransactionsFromFiles();
+		for (Transaction t : transactions) {
+			if (t.getID() == transactionID) {
+				return true;
+			}
+		}
+		return false;
+	}
+	public int numberOfItemBought(int transactionID, int itemID) {
+		ArrayList<Transaction> transactions = this.loadTransactionsFromFiles();
+		for (Transaction t : transactions) {
+			if (t.getID() == transactionID) {
+				for (ItemQuantity i : t.getPurchased()) {
+					if (i.getItemType().getID() == itemID) {
+						return i.getQuantity();
+					}
+				}
+			}
+		}
+		return 0;
+	}
+	public boolean canAddToReturnAndDo(int transactionID, int itemID) {
+		if (this.isValidTransactionNumber(transactionID) && this.numberOfItemBought(transactionID, itemID) > 0) {
+			this.referencedIDs.add(transactionID);
+			this.returning.add(new ItemQuantity(this.getItemType(itemID),1));
+			return true;
+		}
+		return false;
+	}
 	public void removeFromPurchasing(ItemQuantity item) {
 		for (ItemQuantity i : this.purchasing) {
 			if (i.equals(item)) {
@@ -183,6 +248,9 @@ public class Register {
 				return;
 			}
 		}
+	}
+	public void removeFromPurchasing(ItemType item) {
+		this.purchasing.remove(item);
 	}
 	public void clearPurchasing() {
 		this.purchasing = new HashSet<ItemQuantity>();
@@ -217,6 +285,9 @@ public class Register {
 	}
 	public int getTotalForTransaction() {
 		return this.getTotalForPurchasedGoods() - this.getTotalForReturnedGoods();
+	}
+	public String getTotalForTransactionAsString() {
+		return NumberFormat.getCurrencyInstance().format(this.getTotalForTransaction()/100.0);
 	}
 	public int getTotalForPurchasedGoods() {
 		return this.findTotal(this.purchasing);
@@ -264,7 +335,7 @@ public class Register {
 			BufferedReader reader = new BufferedReader(new FileReader(INVENTORY_LOCATION));
 			while(reader.ready()) {
 				String line = reader.readLine();
-				StringTokenizer tokenizer = new StringTokenizer(line);
+				StringTokenizer tokenizer = new StringTokenizer(line,"\t");
 				int id = Integer.parseInt(tokenizer.nextToken());
 				String name = tokenizer.nextToken();
 				int price = Integer.parseInt(tokenizer.nextToken());
@@ -281,9 +352,14 @@ public class Register {
 	private void setInventory(HashSet<ItemQuantityManaged> inventory) {
 		try {
 			BufferedWriter writer = new BufferedWriter(new FileWriter(INVENTORY_LOCATION));
+			boolean first = true;
 			for (ItemQuantityManaged item : inventory) {
-				String line = item.getItemType().getID() + "," + item.getItemType().getName() + "," + item.getItemType().getPrice() + "," + item.getQuantity() + "," + item.getThreshold();
-				writer.write(line);
+				if (first) {
+					writer.write(item.getItemType().getID() + "\t" + item.getItemType().getName() + "\t" + item.getItemType().getPrice() + "\t" + item.getQuantity() + "\t" + item.getThreshold());
+					first = false;
+				}
+				else
+					writer.write("\n" + item.getItemType().getID() + "\t" + item.getItemType().getName() + "\t" + item.getItemType().getPrice() + "\t" + item.getQuantity() + "\t" + item.getThreshold());
 			}
 			writer.close();
 		} catch (IOException e) {
